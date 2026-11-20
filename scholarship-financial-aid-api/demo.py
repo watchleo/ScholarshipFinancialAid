@@ -9,21 +9,24 @@ then run this demo:
 
     python demo.py
 
-The demo creates its own sample records and cleans them up at the end, so
-the database returns to the original case-study state.
+The client uses the classroom key by default. If you set SCHOLARSHIP_API_KEY
+for the server, set the same value in the client terminal. The demo creates
+sample records, writes a CSV report and removes its records at the end.
 """
 
 import json
+import os
 import urllib.error
 import urllib.request
 
-BASE_URL = "http://127.0.0.1:5000"
+BASE_URL = os.environ.get("FASTAPI_BASE_URL", "http://127.0.0.1:5000").rstrip("/")
+API_KEY = os.environ.get("SCHOLARSHIP_API_KEY", "school-demo-key")
 
 
 # ---------------------------------------------------------------------------
 # Tiny HTTP helper
 # ---------------------------------------------------------------------------
-def api_request(method, path, payload=None):
+def api_request(method, path, payload=None, *, expected_error=None):
     """Perform one HTTP request; returns (status_code, parsed_json_body).
 
     [Unit II] Exceptions: try / except / else-style handling with a clean
@@ -31,7 +34,7 @@ def api_request(method, path, payload=None):
     """
     url = BASE_URL + path
     body = None
-    headers = {"Accept": "application/json"}
+    headers = {"Accept": "application/json", "X-API-Key": API_KEY}
     if payload is not None:
         body = json.dumps(payload).encode("utf-8")
         headers["Content-Type"] = "application/json"
@@ -39,7 +42,7 @@ def api_request(method, path, payload=None):
     request = urllib.request.Request(url, data=body, headers=headers,
                                      method=method)
     try:
-        with urllib.request.urlopen(request) as response:  # context manager
+        with urllib.request.urlopen(request, timeout=15) as response:  # context manager
             status = response.status
             raw = response.read().decode("utf-8")
     except urllib.error.HTTPError as error:        # API answered with an error
@@ -52,6 +55,13 @@ def api_request(method, path, payload=None):
             "Start the server first:  python app.py") from error
 
     parsed = json.loads(raw) if raw else {}
+    if status == 401:
+        raise SystemExit("Authentication failed. Set SCHOLARSHIP_API_KEY to the server's key.")
+    if status >= 400 and status != expected_error:
+        message = parsed.get("error", {}).get("message", raw)
+        raise SystemExit(f"{method} {path} returned HTTP {status}: {message}")
+    if expected_error is not None and status != expected_error:
+        raise SystemExit(f"{method} {path} returned HTTP {status}, expected {expected_error}.")
     return status, parsed
 
 
@@ -76,7 +86,7 @@ def line(label, value):
 def run_demo():
     print("=" * 72)
     print(" SCHOLARSHIP & FINANCIAL AID MANAGEMENT SYSTEM - API DEMO")
-    print(" (GET / POST / PUT / DELETE against a live Flask + SQLite API)")
+    print(" (GET / POST / PUT / DELETE against a live FastAPI + SQLite server)")
     print("=" * 72)
 
     # 1 -- Health check (GET)
@@ -124,7 +134,7 @@ def run_demo():
         "Contact_No": "0917-000-0000",
         "Household_Income": 10000,
         "GPA": 1.75,
-    })
+    }, expected_error=422)
     line("HTTP status", status)
     line("error code", body["error"]["code"])
     line("Email problem", body["error"]["details"]["fields"]["Email"])
@@ -173,7 +183,8 @@ def run_demo():
     step(8, "Approval blocked: requirements not Verified  [POST .../review]")
     status, body = api_request("POST",
                                f"/api/applications/{new_app_id}/review",
-                               {"action": "approve", "award_amount": 10000})
+                               {"action": "approve", "award_amount": 10000},
+                               expected_error=422)
     line("HTTP status", status)
     line("error code", body["error"]["code"])
     line("message", body["error"]["message"])
@@ -207,7 +218,6 @@ def run_demo():
     line("message", body["message"])
     totals = body["application_totals"]
     line("remaining balance", money(totals["remaining"]))
-    first_disbursement_id = body["data"]["Disbursement_ID"]
 
     status, body = api_request(
         "POST", f"/api/applications/{new_app_id}/disbursements",
@@ -293,7 +303,8 @@ def run_demo():
 
     # 16 -- Referential integrity demo (DELETE blocked -> HTTP 409)
     step(16, "FK integrity: student with applications cannot be deleted")
-    status, body = api_request("DELETE", f"/api/students/{new_student_id}")
+    status, body = api_request("DELETE", f"/api/students/{new_student_id}",
+                               expected_error=409)
     line("HTTP status", status)
     line("error code", body["error"]["code"])
     line("message", body["error"]["message"])
@@ -303,8 +314,7 @@ def run_demo():
     status, body = api_request("DELETE",
                                f"/api/disbursements/{second_disbursement_id}")
     line(f"delete {second_disbursement_id}", body["message"])
-    # the renewal must be deleted first: it references A007 as its previous
-    # application (self-referencing FK)
+    # Remove the renewal before the application that it references.
     status, body = api_request("DELETE", f"/api/applications/{renewal_id}")
     line(f"delete {renewal_id}", body["message"])
     status, body = api_request("DELETE",
@@ -320,9 +330,8 @@ def run_demo():
     line("applications", body["records"]["Applications"])
     line("total awarded", body["total_awarded_formatted"])
     line("total disbursed", body["total_disbursed_formatted"])
-    print("\nDemo complete. Everything is back to the original case-study data.")
-    print("Open logs/app.log to see the full request audit trail, and")
-    print("data/exports/ for the CSV file created in step 14.")
+    print("\nDemo complete. The demo records have been removed.")
+    print("The CSV report from step 14 is in data/exports/.")
 
 
 if __name__ == "__main__":

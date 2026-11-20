@@ -1,13 +1,38 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f5f6f8" />
-    <title>Scholarship &amp; Aid | Desk</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <title>Scholarship &amp; financial aid</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <script type="module" src="/assets/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <aside>
+    <a class="brand" href="#overview"><span class="brand-mark" data-icon="book"></span>Financial aid office</a>
+    <nav aria-label="Workspace">
+      <a href="#overview" data-page="overview"><span data-icon="home"></span>Overview</a>
+      <a href="#applications" data-page="applications"><span data-icon="file"></span>Applications</a>
+      <a href="#students" data-page="students"><span data-icon="people"></span>Students</a>
+      <a href="#scholarships" data-page="scholarships"><span data-icon="cap"></span>Scholarships</a>
+    </nav>
+    <button type="button" id="key-button" class="quiet key-button"><span data-icon="key"></span>API key</button>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="crumb"><span data-icon="book"></span>Financial aid office <span class="slash">/</span> <span id="crumb">Overview</span></div>
+      <a class="docs" href="/docs">API reference <span data-icon="external"></span></a>
+    </header>
+    <main id="content" tabindex="-1">
+      <div class="page-icon" id="page-icon" aria-hidden="true"></div>
+      <h1 id="title">Scholarship &amp; financial aid</h1>
+      <p id="description" class="description">An overview of student funding, applications and awards.</p>
+      <p id="notice" role="status" hidden></p>
+      <div id="view" aria-busy="true">Loading records…</div>
+    </main>
+  </div>
+  <dialog id="record-dialog" aria-labelledby="dialog-title"></dialog>
+</body>
 </html>

@@ -1,74 +1,67 @@
-"""Catalog endpoints for the five simple reference resources:
+"""REST routes for the five reference tables used in applications."""
 
-    /api/terms        /api/evaluators     /api/requirements
-    /api/sponsors     /api/financial-aids
+from typing import Annotated
 
-All five share the exact same CRUD shape, so the routes are registered in a
-small loop instead of copy-pasting the same five handlers five times
-([Unit II] loop + functions + dict/tuple data structures).
-"""
-
-from flask import Blueprint, jsonify, request
+from fastapi import APIRouter, Body, Request
 
 from services import base_service, catalog_service
-from api.common import get_json_body
 
-catalog_bp = Blueprint("catalog", __name__)
-
-# (url prefix, service entity key, human label)
-CATALOG_RESOURCES = (
-    ("/api/terms", "terms", "Term"),
-    ("/api/evaluators", "evaluators", "Evaluator"),
-    ("/api/requirements", "requirements", "Requirement"),
-    ("/api/sponsors", "sponsors", "Sponsor"),
-    ("/api/financial-aids", "financial_aids", "Financial aid"),
-)
+router = APIRouter(tags=["Catalog"])
 
 
-def _register_resource(url_prefix, entity, label):
-    """Register the five standard REST routes for one catalog resource."""
-
+def register_resource(path, entity, label, example):
+    """Bind standard collection and item routes to one catalog service entity."""
     id_field = base_service.TABLE_REGISTRY[entity]["id_field"]
+    item_path = path + "/{item_id}"
+    query_fields = [
+        {"in": "query", "name": name, "schema": {"type": "string"}, "required": False}
+        for name in catalog_service.FILTER_COLUMNS.get(entity, {})
+    ]
 
-    def list_items():
-        # Only whitelisted filters (see catalog_service.FILTER_COLUMNS) apply
+    @router.get(path, name=f"list_{entity}", openapi_extra={"parameters": query_fields})
+    def list_items(request: Request):
         filters = {
             key: value.strip()
-            for key, value in request.args.items()
+            for key, value in request.query_params.items()
             if value.strip()
         }
-        return jsonify(catalog_service.list_entity(entity, filters))
+        return catalog_service.list_entity(entity, filters)
 
-    def get_item(item_id):
-        return jsonify({"data": catalog_service.get_entity(entity, item_id.upper())})
+    @router.get(item_path, name=f"get_{entity}")
+    def get_item(item_id: str):
+        return {"data": catalog_service.get_entity(entity, item_id.strip().upper())}
 
-    def create_item():
-        row = catalog_service.create_entity(entity, get_json_body())
-        return jsonify({
-            "message": f"{label} {row[id_field]} created successfully.",
-            "data": row,
-        }), 201
+    @router.post(path, name=f"create_{entity}", status_code=201)
+    def create_item(payload: Annotated[dict, Body(examples=[example])]):
+        row = catalog_service.create_entity(entity, payload)
+        return {"message": f"{label} {row[id_field]} created successfully.", "data": row}
 
-    def update_item(item_id):
-        row = catalog_service.update_entity(entity, item_id.upper(), get_json_body())
-        return jsonify({
-            "message": f"{label} {item_id.upper()} updated successfully.",
-            "data": row,
-        })
+    @router.put(item_path, name=f"update_{entity}")
+    def update_item(item_id: str, payload: dict):
+        row = catalog_service.update_entity(entity, item_id.strip().upper(), payload)
+        return {"message": f"{label} {row[id_field]} updated successfully.", "data": row}
 
-    def delete_item(item_id):
-        return jsonify(catalog_service.delete_entity(entity, item_id.upper()))
-
-    catalog_bp.add_url_rule(url_prefix, f"list_{entity}", list_items, methods=["GET"])
-    catalog_bp.add_url_rule(f"{url_prefix}/<item_id>", f"get_{entity}",
-                            get_item, methods=["GET"])
-    catalog_bp.add_url_rule(url_prefix, f"create_{entity}", create_item,
-                            methods=["POST"])
-    catalog_bp.add_url_rule(f"{url_prefix}/<item_id>", f"update_{entity}",
-                            update_item, methods=["PUT"])
-    catalog_bp.add_url_rule(f"{url_prefix}/<item_id>", f"delete_{entity}",
-                            delete_item, methods=["DELETE"])
+    @router.delete(item_path, name=f"delete_{entity}")
+    def delete_item(item_id: str):
+        return catalog_service.delete_entity(entity, item_id.strip().upper())
 
 
-for _url_prefix, _entity, _label in CATALOG_RESOURCES:
-    _register_resource(_url_prefix, _entity, _label)
+register_resource("/api/terms", "terms", "Term", {
+    "Term_Name": "2nd Semester", "Academic_Year": "2026-2027",
+})
+register_resource("/api/evaluators", "evaluators", "Evaluator", {
+    "Evaluator_Name": "Prof. Dani Ruiz",
+})
+register_resource("/api/requirements", "requirements", "Requirement", {
+    "Requirement_Name": "Personal Statement",
+})
+register_resource("/api/sponsors", "sponsors", "Sponsor", {
+    "Sponsor_Name": "Community Partners",
+    "Sponsor_Type": "Foundation",
+    "Sponsor_Email": "aid@example.org",
+    "Sponsor_Contact_No": "0917-555-0151",
+    "Sponsor_Budget": 100000,
+})
+register_resource("/api/financial-aids", "financial_aids", "Financial aid", {
+    "Sponsor_ID": "SP01", "Aid_Type": "Books", "Aid_Description": "Book allowance",
+})

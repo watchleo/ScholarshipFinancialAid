@@ -1,8 +1,3 @@
-# Only ONE external dependency. Everything else used by this project
-# (sqlite3, json, csv, re, logging, argparse, datetime, unittest, urllib)
-# is part of the Python standard library.
-#
-# Per the TO-DO note, no virtual environment is required.
-# Install with:  pip install -r requirements.txt
-# (or:           python -m pip install -r requirements.txt)
-Flask>=3.0
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+httpx>=0.27,<0.29  # FastAPI TestClient

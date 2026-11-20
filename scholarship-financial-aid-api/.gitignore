@@ -6,7 +6,4 @@ __pycache__/
 *.db
 logs/
 data/
-
-# Ionic React frontend
-frontend/node_modules/
-api/static/
+.venv/

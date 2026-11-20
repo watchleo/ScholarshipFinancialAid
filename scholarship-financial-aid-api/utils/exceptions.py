@@ -1,9 +1,4 @@
-"""Custom exception hierarchy ([Unit II] Exceptions).
-
-Every error the API raises is an ``AppError`` subclass, so the Flask error
-handlers in ``api/__init__.py`` can convert it into a clean JSON response
-with the right HTTP status code.
-"""
+"""Domain exceptions translated into JSON responses by the FastAPI handlers."""
 
 
 class AppError(Exception):

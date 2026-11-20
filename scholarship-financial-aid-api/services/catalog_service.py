@@ -16,6 +16,7 @@ logger = get_logger("catalog")
 
 # entity key -> its validator function (see utils/validators.py)
 ENTITY_VALIDATORS = {
+    "scholarships": validators.validate_scholarship,
     "terms": validators.validate_term,
     "evaluators": validators.validate_evaluator,
     "requirements": validators.validate_requirement,
