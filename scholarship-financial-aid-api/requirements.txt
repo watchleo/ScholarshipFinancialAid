@@ -1,0 +1,8 @@
+# Only ONE external dependency. Everything else used by this project
+# (sqlite3, json, csv, re, logging, argparse, datetime, unittest, urllib)
+# is part of the Python standard library.
+#
+# Per the TO-DO note, no virtual environment is required.
+# Install with:  pip install -r requirements.txt
+# (or:           python -m pip install -r requirements.txt)
+Flask>=3.0

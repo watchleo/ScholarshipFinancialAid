@@ -1,0 +1,8 @@
+{
+  "host": "127.0.0.1",
+  "port": 5000,
+  "debug": false,
+  "database_path": "database/scholarship.db",
+  "log_path": "logs/app.log",
+  "exports_dir": "data/exports"
+}
