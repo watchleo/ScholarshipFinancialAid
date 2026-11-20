@@ -1,59 +1,64 @@
-"""Student endpoints (REST resource: /api/students)."""
+"""HTTP endpoints for student records and their applications."""
 
-from flask import Blueprint, jsonify, request
+from typing import Annotated
+
+from fastapi import APIRouter, Body
 
 from services import student_service
-from api.common import get_json_body
 
-students_bp = Blueprint("students", __name__)
+router = APIRouter(prefix="/api/students", tags=["Students"])
+
+STUDENT_EXAMPLE = {
+    "Student_Name": "Alex Cruz",
+    "Program": "BS Education",
+    "Year_Level": "1st Year",
+    "Email": "alex.cruz@example.org",
+    "Contact_No": "0917-555-0142",
+    "Household_Income": 14000,
+    "GPA": 1.75,
+}
 
 
-@students_bp.get("/api/students")
-def list_students():
-    """GET - list students. Optional filters: ?search= &program= &year_level="""
-    result = student_service.list_students(
-        search=request.args.get("search", "").strip() or None,
-        program=request.args.get("program", "").strip() or None,
-        year_level=request.args.get("year_level", "").strip() or None,
+@router.get("")
+def list_students(search: str = "", program: str = "", year_level: str = ""):
+    """Find students by name or email, program, and year level."""
+    return student_service.list_students(
+        search=search.strip() or None,
+        program=program.strip() or None,
+        year_level=year_level.strip() or None,
     )
-    return jsonify(result)
 
 
-@students_bp.get("/api/students/<student_id>")
-def get_student(student_id):
-    """GET - fetch one student by ID."""
-    return jsonify({"data": student_service.get_student(student_id.strip().upper())})
+@router.get("/{student_id}")
+def get_student(student_id: str):
+    return {"data": student_service.get_student(student_id.strip().upper())}
 
 
-@students_bp.post("/api/students")
-def create_student():
-    """POST - register a new student (ID auto-generated when omitted)."""
-    student = student_service.create_student(get_json_body())
-    return jsonify({
+@router.post("", status_code=201)
+def create_student(payload: Annotated[dict, Body(examples=[STUDENT_EXAMPLE])]):
+    """Register a student and assign an ID when one is omitted."""
+    student = student_service.create_student(payload)
+    return {
         "message": f"Student {student['Student_ID']} created successfully.",
         "data": student,
-    }), 201
+    }
 
 
-@students_bp.put("/api/students/<student_id>")
-def update_student(student_id):
-    """PUT - partial update of one student."""
-    student = student_service.update_student(
-        student_id.strip().upper(), get_json_body())
-    return jsonify({
+@router.put("/{student_id}")
+def update_student(student_id: str, payload: dict):
+    """Update the supplied fields of a student record."""
+    student = student_service.update_student(student_id.strip().upper(), payload)
+    return {
         "message": f"Student {student['Student_ID']} updated successfully.",
         "data": student,
-    })
+    }
 
 
-@students_bp.delete("/api/students/<student_id>")
-def delete_student(student_id):
-    """DELETE - remove a student (409 while applications reference them)."""
-    return jsonify(student_service.delete_student(student_id.strip().upper()))
+@router.delete("/{student_id}")
+def delete_student(student_id: str):
+    return student_service.delete_student(student_id.strip().upper())
 
 
-@students_bp.get("/api/students/<student_id>/applications")
-def list_student_applications(student_id):
-    """GET - all applications of one student, plus a status summary."""
-    return jsonify(
-        student_service.get_student_applications(student_id.strip().upper()))
+@router.get("/{student_id}/applications")
+def list_student_applications(student_id: str):
+    return student_service.get_student_applications(student_id.strip().upper())
